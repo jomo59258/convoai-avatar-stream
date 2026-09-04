@@ -35,3 +35,4 @@ sso/
 
 # local experiments
 example_project/
+.env.local
