@@ -5,11 +5,7 @@ import { authMode, getSessionUser } from "@/lib/auth";
 /**
  * GET /api/auth/me
  *
- * Identity only — no database, no quota store.
- *
- * Use this when you added Agora SSO login but did NOT add the optional
- * demo time-limit layer (see docs/DEMO-QUOTA.md). For quota + remaining
- * time, use GET /api/session/me instead.
+ * Returns the current PIN-backed host session without exposing the cookie.
  */
 export async function GET() {
   const user = await getSessionUser();

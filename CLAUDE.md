@@ -18,14 +18,14 @@ Features and fixes NEVER go straight to `main`:
 4. **PR**: push the branch, `gh pr create` with a summary + test plan. Merge with `gh pr merge --squash` after the user OKs, then `git checkout main && git pull`.
 5. **Deploy**: `npm run deploy` (runs the test suite, then `vercel deploy --prod` — the suite is the deploy gate). Deploy deliberately: a prod redeploy ends any live streams.
 
-## Auth (Agora SSO — hosts only, production only)
+## Auth (host PIN — hosts only, production only)
 
-Hosting surfaces are gated behind **Agora SSO** (console.agora.io accounts); **guest viewing is fully public**. Implementation is the internal SSO starter's Path B (vendored files: `lib/auth.ts`, `lib/agora-sso.ts`, `hooks/useAgoraAuth.ts`, `app/api/auth/**`; the `sso/` docs folder is gitignored/internal). Identity = HttpOnly JWT cookie (`SESSION_JWT_SECRET`), no database.
+Hosting surfaces are gated behind a shared **host PIN**; **guest viewing is fully public**. `POST /api/auth/pin` verifies `HOST_PIN` and issues an HttpOnly JWT cookie signed by `SESSION_JWT_SECRET`; there is no identity database.
 
-- **Modes** (`authMode()` in `lib/auth.ts`): non-production defaults to `bypass` (synthetic user — local dev needs no credentials); production hard-defaults to `sso` unless `ALLOW_BYPASS_IN_PRODUCTION=true` is explicitly set.
+- **Modes** (`authMode()` in `lib/auth.ts`): non-production defaults to `bypass` unless `AUTH_MODE=pin`; production always requires `pin` and fails closed when `HOST_PIN` is missing or invalid.
 - **Gated (session required via `requireSession()` in `lib/authGuard.js`, checked BEFORE hostToken):** `POST+GET /api/channels`, `by-host-token`, `credentials?role=host`, `start`, `stop`, `speak`, `think`, channel `DELETE`. Pages: `/` (sign-in card, guest paste-a-link stays public) and `/manage/[hostToken]` (sign-in card; bootstrap effects gated on `authed` so no 401 noise).
 - **Public (guests):** `/stream/[id]`, `state`, `message`, `presence`, `agent-state`, `transcript`, `credentials?role=guest`.
-- **LIVE (2026-08-03):** Production runs `AUTH_MODE=sso` with real credentials (`client_id=convoai_avatar_stream`, OAuth via sso2.agora.io); `ALLOW_BYPASS_IN_PRODUCTION` is removed. Verified: all 8 host surfaces 401 without a session, guest routes un-gated, sign-in 307s to the authorize URL with the registered callback. The SSO client id/secret live in `.env.local` (local stays bypass) and Vercel prod env.
+- **Host login:** a correct 4–12 digit `HOST_PIN` creates a 12-hour session. All host surfaces return 401 without that session; guest routes remain ungated.
 - Note: `@/*` path alias maps to repo root (`tsconfig.json`) because the vendored files import `@/lib/auth` and this repo has no `src/`.
 
 ## Testing
@@ -104,7 +104,7 @@ convoai_stream/
 │   ├── components/
 │   │   ├── ConfirmModal.jsx            ← Design-language confirm dialog (End stream)
 │   │   ├── ErrorScreen.jsx             ← Invalid-link / ended-stream screens
-│   │   └── SignInCard.jsx              ← Agora SSO sign-in card (/ and /manage)
+│   │   └── SignInCard.jsx              ← Host PIN card (/ and /manage)
 │   ├── components/stream/
 │   │   ├── StreamScreen.jsx            ← Responsive orchestrator (desktop/mobile), composes stage + rail
 │   │   ├── StreamStage.jsx             ← Avatar stage: state pill, HUD, live caption, host controls
@@ -116,7 +116,7 @@ convoai_stream/
 │   │   ├── conversational-ai-api/      ← Vendored Agora Web toolkit (agent-state events)
 │   │   └── latency-metrics.ts          ← Stub the toolkit imports
 │   ├── hooks/
-│   │   ├── useAgoraAuth.ts             ← Client auth state (me/signInUrl/signOutUrl); vendored SSO
+│   │   ├── useAgoraAuth.ts             ← Client host-session state and PIN login/logout actions
 │   │   ├── useChannel.js               ← Subscribes to id as RTM channel; state snapshot + actions (sendMessage, speakScript, start, stop, sendPresence)
 │   │   └── useAgora.js                 ← RTC + RTM client mgmt + toolkit init. mode='live' + audience role.
 │   └── api/

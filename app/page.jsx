@@ -24,7 +24,7 @@ function avatarFromQuery() {
 
 export default function SetupPage() {
   const router = useRouter();
-  const { me, loading: authLoading, authError, signInUrl, signOutUrl } = useAgoraAuth();
+  const { me, loading: authLoading, authError, signIn, signOut } = useAgoraAuth();
   const [channel, setChannel] = useState('Product AMA');
   const [hostName, setHostName] = useState('');
   const [topic, setTopic] = useState('');
@@ -88,13 +88,13 @@ export default function SetupPage() {
     );
   }
 
-  // Hosting is SSO-gated in production; guests never need this page (they get
+  // Hosting is PIN-gated in production; guests never need this page (they get
   // direct /stream links), but the paste-a-link helper stays public.
   if (!me?.authenticated) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 24px' }}>
         <div style={{ width: '100%', maxWidth: 460, display: 'flex', flexDirection: 'column', gap: 44 }}>
-          <SignInCard signInUrl={signInUrl} authError={authError} />
+          <SignInCard signIn={signIn} authError={authError} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <span className="mono" style={labelStyle}>JOINING AS A GUEST? PASTE THE STREAM LINK</span>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -206,9 +206,9 @@ export default function SetupPage() {
                 {busy ? 'Creating…' : 'Create & go live'}
               </button>
               <button onClick={() => setShowJoin(true)} style={linkBtnStyle}>Joining as a guest? Enter here →</button>
-              {me.authMode === 'sso' && (
+              {me.authMode === 'pin' && (
                 <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--faint)' }}>
-                  Signed in as {me.user.name} · <a href={signOutUrl} style={{ color: 'var(--muted)' }}>Sign out</a>
+                  Hosting unlocked · <button onClick={signOut} style={{ ...linkBtnStyle, padding: 0, textDecoration: 'underline' }}>Lock</button>
                 </span>
               )}
             </div>

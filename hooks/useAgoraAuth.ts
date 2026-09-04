@@ -2,19 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-/**
- * Client-side Agora SSO identity — no quota, no database.
- *
- * Polls GET /api/auth/me. Use this for login-gated demos that do not
- * need per-user time limits. For time budgets, use useAgoraSession()
- * (see docs/DEMO-QUOTA.md).
- */
-
 export type AgoraAuthMe =
-  | { authenticated: false; authMode: "sso" | "bypass" }
+  | { authenticated: false; authMode: "pin" | "bypass" }
   | {
       authenticated: true;
-      authMode: "sso" | "bypass";
+      authMode: "pin" | "bypass";
       user: { id: string; email: string; name: string };
     };
 
@@ -30,35 +22,31 @@ export function useAgoraAuth() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const err = params.get("authError");
-    if (err) {
-      setAuthError(err);
-      params.delete("authError");
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`,
-      );
-    }
     void refreshMe().catch((err) =>
       console.error("[useAgoraAuth] me failed", err),
     );
   }, [refreshMe]);
 
-  return {
-    me,
-    loading: me === null,
-    authError,
-    refreshMe,
-    // Carry the current location through the OAuth round-trip so query
-    // params (/?avatar=lemonslice) and deep links (/manage/…) survive login.
-    signInUrl:
-      typeof window === "undefined"
-        ? "/api/auth/agora/start"
-        : `/api/auth/agora/start?next=${encodeURIComponent(
-            window.location.pathname + window.location.search,
-          )}`,
-    signOutUrl: "/api/auth/agora/logout",
-  };
+  const signIn = useCallback(async (pin: string) => {
+    setAuthError(null);
+    const res = await fetch("/api/auth/pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      const message = json.error || "Sign-in failed";
+      setAuthError(message);
+      throw new Error(message);
+    }
+    await refreshMe();
+  }, [refreshMe]);
+
+  const signOut = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    await refreshMe();
+  }, [refreshMe]);
+
+  return { me, loading: me === null, authError, signIn, signOut, refreshMe };
 }

@@ -34,7 +34,7 @@ npm run dev
 
 The app is available at **http://localhost:4000**.
 
-> **Auth:** in production, creating and managing streams requires **Agora SSO** sign-in (console.agora.io accounts). Guest viewing is fully public. Local dev runs in bypass mode (no credentials needed).
+> **Auth:** in production, creating and managing streams requires the shared host PIN configured in `HOST_PIN`. Guest viewing is fully public. Local dev runs in bypass mode by default.
 
 | Route | Who it's for | What it does |
 |---|---|---|
@@ -71,8 +71,8 @@ Required:
 | `AGORA_APP_CERTIFICATE` | App certificate (needed for token generation; enable token auth in the Agora Console) |
 | `ANAM_API_KEY`, `ANAM_AVATAR_ID` | Anam avatar credentials (the avatar is on by default) |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash Redis (channel state) — from the Vercel Marketplace integration, or any Upstash database's REST credentials |
-| `SESSION_JWT_SECRET` | Signs the host session cookie (`openssl rand -hex 48`) |
-| `AUTH_MODE` + `AGORA_SSO_CLIENT_ID`, `AGORA_SSO_CLIENT_SECRET`, `AGORA_SSO_REDIRECT_URI` | Agora SSO for hosting surfaces. Local dev: `AUTH_MODE=bypass`, no credentials needed. Production: `AUTH_MODE=sso` + credentials from the Agora SSO team |
+| `HOST_PIN` | Shared 4–12 digit PIN that unlocks host surfaces in production |
+| `SESSION_JWT_SECRET` | Signs the 12-hour host session cookie (`openssl rand -hex 48`) |
 
 Optional (defaults shown):
 
@@ -133,6 +133,8 @@ vercel link                                  # link the repo to a Vercel project
 vercel integration add upstash/upstash-kv    # provisions Redis + KV_* env vars
 # add every required var from .env.example (production scope):
 vercel env add AGORA_APP_ID production       # …repeat for the rest
+vercel env add HOST_PIN production
+vercel env add SESSION_JWT_SECRET production
 vercel deploy --prod
 ```
 

@@ -14,7 +14,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 export default function ManagePage({ params }) {
   const { hostToken } = params;
   const router = useRouter();
-  const { me, loading: authLoading, authError, signInUrl } = useAgoraAuth();
+  const { me, loading: authLoading, authError, signIn } = useAgoraAuth();
   const authed = !!me?.authenticated;
   const [channelId, setChannelId] = useState(null);
   const [resolveError, setResolveError] = useState(null);
@@ -27,7 +27,7 @@ export default function ManagePage({ params }) {
   const startedRef = useRef(false);
 
   // Resolve host token → channel id. Gated on auth so an unauthenticated
-  // visitor doesn't fire 401ing bootstrap requests (SSO mode).
+  // visitor doesn't fire 401ing bootstrap requests (PIN mode).
   useEffect(() => {
     if (!authed) return;
     let alive = true;
@@ -109,9 +109,9 @@ export default function ManagePage({ params }) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 24px' }}>
         <SignInCard
-          signInUrl={signInUrl}
+          signIn={signIn}
           authError={authError}
-          note="After signing in, reopen this host link."
+          note="This unlocks the host console for 12 hours."
         />
       </div>
     );
