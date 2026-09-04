@@ -14,7 +14,7 @@ This is a **reference / demo project** intended to be cloned and customized.
 - **An Agora account** with a project that has:
   - The **Conversational AI Engine** enabled
   - Token authentication enabled (so we can mint RTC + RTM tokens)
-- *(Optional)* An **Anam** or **HeyGen** account for a talking-head avatar
+- A **Lemonslice** API key for the default talking-head avatar (Anam and HeyGen are optional alternatives)
 - *(Optional)* A **Microsoft Azure** Speech account if you don't want Agora's preset TTS
 
 ### Setup
@@ -38,7 +38,7 @@ The app is available at **http://localhost:4000**.
 
 | Route | Who it's for | What it does |
 |---|---|---|
-| `/` | Host / operator | **Setup screen**: name the channel, optionally give the avatar a topic to be knowledgeable about, pick a response mode (Batched / Sequential) and, for batched, a collection window (10/20/30s). Opening the page as `/?avatar=lemonslice` switches the stream to a **Lemonslice** avatar and reveals an optional avatar image URL field (Lemonslice animates any public portrait image) plus a Female/Male voice toggle. **Create & go live** → server returns a guest link + a private host link and redirects to the host page. |
+| `/` | Host / operator | **Setup screen**: name the channel, optionally give the avatar a topic, pick a response mode, and configure the default **Lemonslice** avatar with an agent ID or public portrait image URL plus a Female/Male voice toggle. **Create & go live** → server returns a guest link + a private host link and redirects to the host page. |
 | `/manage/[hostToken]` | Host | Live console: the avatar goes live automatically and greets the room when the host connects. The host can direct the avatar ("+ Add Script" opens a modal: **Speak** says the text verbatim; **Think** sends a hidden prompt through the LLM and the avatar reacts in its own words), mute the agent locally, ask questions, and copy the guest link. |
 | `/stream/[id]` | Guests | Enter a name + email, join the room, watch the avatar, and ask questions in the shared chat. Each new guest is welcomed by name (guests arriving within a few seconds are welcomed together). Unlimited guests per channel. |
 
@@ -58,7 +58,7 @@ The app is available at **http://localhost:4000**.
 
 ## Environment variables
 
-The app ships with **Minimax TTS + Anam avatar** (set at channel creation in `app/page.jsx`). These are what it actually reads:
+The app ships with Agora-managed **Deepgram ASR → OpenAI LLM → MiniMax TTS** and a **Lemonslice avatar**. These are what it reads:
 
 Required:
 
@@ -66,10 +66,8 @@ Required:
 |---|---|
 | `AGORA_APP_ID` | Your Agora project App ID |
 | `NEXT_PUBLIC_AGORA_APP_ID` | Same App ID, exposed to the browser for the RTC/RTM SDKs |
-| `AGORA_USERNAME` | Agora REST API customer key |
-| `AGORA_PASSWORD` | Agora REST API customer secret |
-| `AGORA_APP_CERTIFICATE` | App certificate (needed for token generation; enable token auth in the Agora Console) |
-| `ANAM_API_KEY`, `ANAM_AVATAR_ID` | Anam avatar credentials (the avatar is on by default) |
+| `AGORA_APP_CERTIFICATE` | Server-only App Certificate used to mint short-lived RTC, RTM, and ConvoAI REST tokens |
+| `LEMONSLICE_API_KEY` | Lemonslice API key for the default avatar provider |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash Redis (channel state) — from the Vercel Marketplace integration, or any Upstash database's REST credentials |
 | `HOST_PIN` | Shared 4–12 digit PIN that unlocks host surfaces in production |
 | `SESSION_JWT_SECRET` | Signs the 12-hour host session cookie (`openssl rand -hex 48`) |
@@ -86,6 +84,8 @@ Optional (defaults shown):
 | `LEMONSLICE_API_KEY`, `LEMONSLICE_AVATAR_ID` | — | Lemonslice avatar; the setup screen accepts an agent id or public image URL per stream |
 | `TTS_SPEED` | `1.0` | TTS playback speed multiplier |
 | `AVATAR_AGORA_UID` | `102` | RTC UID the avatar's video track publishes on |
+| `AGORA_USERNAME`, `AGORA_PASSWORD` | — | Agora RESTful API Customer ID/Secret; only needed for instant channel-state fanout through the RTM REST API. ConvoAI uses scoped token auth. |
+| `ANAM_API_KEY`, `ANAM_AVATAR_ID` | — | Optional Anam avatar credentials |
 
 `.env.example` has the same list with inline comments — use it as the source of truth when filling in `.env.local`.
 
