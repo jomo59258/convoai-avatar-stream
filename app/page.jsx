@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAgoraAuth } from '../hooks/useAgoraAuth';
 import SignInCard from './components/SignInCard';
 import { Spinner } from './components/stream/StreamParts';
+import { normalizeLemonsliceAvatarInput } from '../lib/avatarInput';
 
 const WINDOWS = [
   { label: '10s', ms: 10000 },
@@ -14,12 +15,12 @@ const WINDOWS = [
 
 const AVATAR_VENDORS = ['anam', 'lemonslice', 'heygen'];
 
-// Avatar provider is a URL switch, not a form control: /?avatar=lemonslice.
+// A query parameter can preselect the provider; the form remains editable.
 // Read lazily (not useSearchParams) so the page needs no Suspense boundary.
 function avatarFromQuery() {
-  if (typeof window === 'undefined') return 'anam';
+  if (typeof window === 'undefined') return 'lemonslice';
   const v = new URLSearchParams(window.location.search).get('avatar');
-  return AVATAR_VENDORS.includes(v) ? v : 'anam';
+  return AVATAR_VENDORS.includes(v) ? v : 'lemonslice';
 }
 
 export default function SetupPage() {
@@ -34,20 +35,16 @@ export default function SetupPage() {
   const [error, setError] = useState(null);
   const [showJoin, setShowJoin] = useState(false);
   const [joinCode, setJoinCode] = useState('');
-  const [avatarVendor] = useState(avatarFromQuery);
+  const [avatarVendor, setAvatarVendor] = useState(avatarFromQuery);
   const [avatarImageUrl, setAvatarImageUrl] = useState('');
   const [voiceGender, setVoiceGender] = useState('female');
 
   const create = async () => {
     if (busy) return;
-    const imageUrl = avatarImageUrl.trim();
-    if (imageUrl) {
-      let ok = false;
-      try { const u = new URL(imageUrl); ok = u.protocol === 'https:' && !!u.hostname; } catch { /* malformed */ }
-      if (!ok) {
-        setError('Avatar image must be a valid public https:// URL');
+    const imageUrl = normalizeLemonsliceAvatarInput(avatarImageUrl);
+    if (avatarImageUrl.trim() && !imageUrl) {
+        setError('Paste a full public https:// image URL or a Lemonslice agent_… ID');
         return;
-      }
     }
     setBusy(true); setError(null);
     try {
@@ -78,6 +75,18 @@ export default function SetupPage() {
   const goJoin = () => {
     const code = joinCode.trim().split('/').pop();
     if (code) router.push(`/stream/${code}`);
+  };
+
+  const pasteAvatarUrl = async () => {
+    try {
+      const pasted = await navigator.clipboard.readText();
+      const normalized = normalizeLemonsliceAvatarInput(pasted);
+      if (!normalized) throw new Error('Clipboard does not contain a full https:// URL or Lemonslice agent ID');
+      setAvatarImageUrl(normalized);
+      setError(null);
+    } catch (e) {
+      setError(e.message || 'Clipboard access failed. Click the field and press ⌘V or Ctrl+V.');
+    }
   };
 
   if (authLoading) {
@@ -142,16 +151,31 @@ export default function SetupPage() {
               <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What should the avatar be knowledgeable about?" style={inputStyle} />
             </Field>
 
+            <Field label="AVATAR PROVIDER">
+              <select value={avatarVendor} onChange={(e) => setAvatarVendor(e.target.value)} style={inputStyle}>
+                <option value="lemonslice">Lemonslice — animate an image</option>
+                <option value="anam">Anam</option>
+                <option value="heygen">HeyGen LiveAvatar</option>
+              </select>
+            </Field>
+
             {avatarVendor === 'lemonslice' && (
-              <Field label="LEMONSLICE AVATAR IMAGE URL (OPTIONAL)">
-                <input
-                  value={avatarImageUrl}
-                  onChange={(e) => setAvatarImageUrl(e.target.value)}
-                  placeholder="https://… public portrait image (blank = default avatar)"
-                  style={inputStyle}
-                />
+              <Field label="LEMONSLICE AVATAR IMAGE URL OR AGENT ID">
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input
+                    value={avatarImageUrl}
+                    onChange={(e) => setAvatarImageUrl(e.target.value)}
+                    onPaste={(e) => {
+                      const normalized = normalizeLemonsliceAvatarInput(e.clipboardData.getData('text'));
+                      if (normalized) { e.preventDefault(); setAvatarImageUrl(normalized); setError(null); }
+                    }}
+                    placeholder="https://…/portrait.jpg or agent_…"
+                    style={{ ...inputStyle, flex: 1, width: 'auto' }}
+                  />
+                  <button type="button" onClick={pasteAvatarUrl} style={{ ...toolbarStyle, minWidth: 82 }}>Paste URL</button>
+                </div>
                 <span style={{ fontSize: 12, color: 'var(--faint)', lineHeight: 1.4 }}>
-                  Lemonslice animates this image live. Best: face large in frame, neutral expression, portrait ≈368×560, under 4MB.
+                  Use a public image URL—not the Lemonslice dashboard /pipeline page URL—or paste a Lemonslice agent_… ID. Best image: face large in frame, neutral expression, portrait ≈368×560, under 4MB.
                 </span>
                 {avatarImageUrl.trim() && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
@@ -168,6 +192,13 @@ export default function SetupPage() {
                 )}
               </Field>
             )}
+
+            <div style={{ padding: '12px 14px', border: '1px solid var(--line-2)', borderRadius: 12, background: 'var(--stage)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span className="mono" style={{ ...labelStyle, fontSize: 10 }}>AGORA MANAGED PIPELINE</span>
+              <span style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>
+                Deepgram Nova-3 ASR → OpenAI GPT-4o mini LLM → MiniMax Speech 2.6 Turbo TTS
+              </span>
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <span className="mono" style={labelStyle}>RESPONSE MODE</span>
@@ -232,6 +263,7 @@ export default function SetupPage() {
 const inputStyle = { height: 52, padding: '0 18px', border: '1px solid var(--line-3)', borderRadius: 13, fontSize: 16, color: 'var(--ink)', background: 'var(--panel)', width: '100%' };
 const labelStyle = { fontSize: 11, letterSpacing: '0.08em', color: 'var(--muted)', fontWeight: 500 };
 const linkBtnStyle = { alignSelf: 'center', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: 'var(--muted)' };
+const toolbarStyle = { height: 52, padding: '0 14px', border: '1px solid var(--line-3)', borderRadius: 13, background: 'var(--panel)', color: 'var(--ink)', cursor: 'pointer', fontSize: 14, fontWeight: 600 };
 const errorStyle = { padding: '10px 14px', background: 'color-mix(in oklab, var(--red) 10%, transparent)', border: '1px solid color-mix(in oklab, var(--red) 30%, transparent)', borderRadius: 10, fontSize: 13, color: 'var(--red)' };
 
 function Field({ label, children }) {

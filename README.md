@@ -78,16 +78,18 @@ Optional (defaults shown):
 
 | Var | Default | What it is |
 |---|---|---|
-| `AGORA_PRESET_ASR_LLM` | `deepgram_nova_3,openai_gpt_4o_mini` | ASR + LLM portion of the agent preset (Minimax TTS is appended automatically) |
+| `AGORA_ASR_PRESET` | `deepgram_nova_3` | Agora-managed ASR preset |
+| `AGORA_LLM_PRESET` | `openai_gpt_4o_mini` | Agora-managed LLM preset |
+| `AGORA_TTS_PRESET` | `minimax_speech_2_6_turbo` | Agora-managed TTS preset; remains at 24 kHz for avatar compatibility |
 | `MINIMAX_VOICE_ID` | `English_captivating_female1` | Minimax TTS voice |
 | `MINIMAX_VOICE_ID_MALE` | `English_expressive_narrator` | Voice used when the Lemonslice form's toggle is set to Male |
-| `LEMONSLICE_API_KEY`, `LEMONSLICE_AVATAR_ID` | — | Lemonslice avatar (`/?avatar=lemonslice`); AVATAR_ID takes an agent id or a public image URL |
+| `LEMONSLICE_API_KEY`, `LEMONSLICE_AVATAR_ID` | — | Lemonslice avatar; the setup screen accepts an agent id or public image URL per stream |
 | `TTS_SPEED` | `1.0` | TTS playback speed multiplier |
 | `AVATAR_AGORA_UID` | `102` | RTC UID the avatar's video track publishes on |
 
 `.env.example` has the same list with inline comments — use it as the source of truth when filling in `.env.local`.
 
-> `lib/agoraService.js` also contains config branches for **Microsoft Azure TTS** (`TTS_KEY`, `TTS_REGION`, `TTS_VOICE_NAME`), the **OpenAI TTS preset** (`AGORA_PRESET`), and **HeyGen avatars** (`HEYGEN_API_KEY`, `HEYGEN_AVATAR_ID`, `HEYGEN_QUALITY`). The setup screen doesn't currently expose vendor selection, so those env vars only matter if you wire `ttsVendor` / `avatarVendor` through channel creation yourself.
+> `lib/agoraService.js` also contains config branches for **Microsoft Azure TTS** (`TTS_KEY`, `TTS_REGION`, `TTS_VOICE_NAME`), the **OpenAI TTS preset**, and **HeyGen avatars** (`HEYGEN_API_KEY`, `HEYGEN_AVATAR_ID`, `HEYGEN_QUALITY`). The setup screen exposes the avatar provider; the managed Deepgram → OpenAI → MiniMax preset chain remains fixed unless its environment variables are changed.
 
 ---
 
